@@ -194,7 +194,8 @@ export function useCardForm(
       let result;
       const isEdit = data.cardId;
       if (!isEdit) {
-        const { cardId, ...payload } = finalData;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { cardId: _cardId, ...payload } = finalData;
         result = await onCreate(payload);
       } else if (data.cardId && isDirty) {
         result = await onUpdate(finalData);
@@ -216,8 +217,10 @@ export function useCardForm(
 
   useEffect(() => {
     const fetchData = async () => {
-      if (dashboardId) await getMemberList();
-      if (initialData?.id) await getColumnList();
+      const tasks: Promise<void>[] = [];
+      if (dashboardId) tasks.push(getMemberList());
+      if (initialData?.id) tasks.push(getColumnList());
+      await Promise.allSettled(tasks);
     };
     fetchData();
   }, [initialData?.id, dashboardId, getMemberList, getColumnList]);
