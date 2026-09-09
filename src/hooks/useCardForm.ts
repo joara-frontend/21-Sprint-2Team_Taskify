@@ -37,7 +37,7 @@ export function useCardForm(
     handleSubmit: handleSubmit,
   } = useForm<CardFormValues>({
     resolver: zodResolver(CardFormSchema),
-    mode: "all",
+    mode: "onTouched",
     defaultValues: {
       dashboardId: dashboardId,
       columnId: initialData?.columnId || columnId,
