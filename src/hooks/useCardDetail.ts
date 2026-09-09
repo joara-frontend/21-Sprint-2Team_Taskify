@@ -16,7 +16,6 @@ import useInfiniteScroll from "@/hooks/useInfiniteScroll";
 import { useParams } from "next/navigation";
 import { CardCommentSchema, CardCommentValues } from "@/types/card.schema";
 import { handleApiError } from "@/utils/handleError";
-import { showToast } from "@/contexts/ToastProvider";
 
 const SIZE = 5;
 
@@ -84,7 +83,16 @@ export function useCardDetail(cardId: number) {
   const [loadingMore, setLoadingMore] = useState(false);
   const listScrollRef = useRef<HTMLDivElement | null>(null);
   const mountedRef = useIsMountedRef();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const submittingCommentIdRef = useRef<number | null>(null);
+  const [submittingCommentId, setSubmittingCommentId] = useState<number | null>(
+    null,
+  );
+
+  const setSubmitting = useCallback((id: number | null) => {
+    submittingCommentIdRef.current = id;
+    setSubmittingCommentId(id);
+  }, []);
 
   // 댓글 목록
   useEffect(() => {
@@ -137,10 +145,10 @@ export function useCardDetail(cardId: number) {
 
   // 댓글 추가
   const onSubmit = async (data: CommentCreateType) => {
-    if (isSubmitting) return;
+    if (isCreating) return;
 
     try {
-      setIsSubmitting(true);
+      setIsCreating(true);
       const res = await postComments(data);
 
       if (res) {
@@ -151,55 +159,61 @@ export function useCardDetail(cardId: number) {
     } catch (error) {
       handleApiError(error, "댓글 추가 실패:");
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
   // 댓글 수정
-  const UpdateComment = async (commentId: number, content: string) => {
-    if (!content.trim()) return;
-    if (isSubmitting) return;
+  const UpdateComment = useCallback(
+    async (commentId: number, content: string) => {
+      if (!content.trim()) return;
+      if (submittingCommentIdRef.current === commentId) return;
 
-    try {
-      setIsSubmitting(true);
-      const res = await putComments(commentId, content);
+      try {
+        setSubmitting(commentId);
+        const res = await putComments(commentId, content);
 
-      if (res) {
-        const nextComment = res;
-        setCommentList((prev) =>
-          prev.map((comment) =>
-            comment.id === commentId ? nextComment : comment,
-          ),
-        );
+        if (res) {
+          const nextComment = res;
+          setCommentList((prev) =>
+            prev.map((comment) =>
+              comment.id === commentId ? nextComment : comment,
+            ),
+          );
+        }
+      } catch (error) {
+        handleApiError(error, "댓글 수정 실패:");
+      } finally {
+        setSubmitting(null);
       }
-    } catch (error) {
-      handleApiError(error, "댓글 수정 실패:");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [setSubmitting],
+  );
 
   // 댓글 삭제
-  const DeleteComment = async (commentId: number) => {
-    if (!commentId) return;
-    if (isSubmitting) return;
+  const DeleteComment = useCallback(
+    async (commentId: number) => {
+      if (!commentId) return;
+      if (submittingCommentIdRef.current === commentId) return;
 
-    try {
-      setIsSubmitting(true);
-      const res = await deleteComments(commentId);
+      try {
+        setSubmitting(commentId);
+        const res = await deleteComments(commentId);
 
-      if (res.status === 204 || res.status === 200) {
-        setCommentList((prev) =>
-          prev.filter((comment) => comment.id !== commentId),
-        );
-        return;
+        if (res.status === 204 || res.status === 200) {
+          setCommentList((prev) =>
+            prev.filter((comment) => comment.id !== commentId),
+          );
+          return;
+        }
+      } catch (error) {
+        handleApiError(error, "댓글 삭제 조회 실패:");
+      } finally {
+        setSubmitting(null);
       }
-    } catch (error) {
-      handleApiError(error, "댓글 삭제 조회 실패:");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [setSubmitting],
+  );
 
   useEffect(() => {
     if (columnId !== undefined) {
@@ -212,6 +226,14 @@ export function useCardDetail(cardId: number) {
       setValue("dashboardId", dashboardId, { shouldValidate: true });
     }
   }, [dashboardId, setValue]);
+
+  const commentActions = useMemo(
+    () => ({
+      onUpdate: UpdateComment,
+      onDelete: DeleteComment,
+    }),
+    [UpdateComment, DeleteComment],
+  );
 
   return {
     cardProps: {
@@ -227,13 +249,11 @@ export function useCardDetail(cardId: number) {
     formProps: {
       control,
       isValid,
-      isSubmitting,
+      isCreating,
+      submittingCommentId,
       onFormSubmit: handleSubmit,
       onSubmit,
     },
-    commentActions: {
-      onUpdate: UpdateComment,
-      onDelete: DeleteComment,
-    },
+    commentActions,
   };
 }
