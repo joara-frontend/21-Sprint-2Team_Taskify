@@ -3,7 +3,7 @@ import BaseButton from "@/components/common/Button/ButtonBase";
 import { useAuth } from "@/contexts/AuthProvider";
 import { CommentItemType } from "@/types/comment.type";
 import { formatToDisplayDate } from "@/utils/formatDate";
-import { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useState } from "react";
 
 interface CommentActionProps {
   onUpdate: (commentId: number, content: string) => Promise<void>;

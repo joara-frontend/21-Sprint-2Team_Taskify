@@ -15,7 +15,8 @@ interface ListProps {
 interface FormProps {
   control: Control<CardCommentValues>;
   isValid: boolean;
-  isSubmitting: boolean;
+  isCreating: boolean;
+  submittingCommentId: number | null;
   onFormSubmit: UseFormHandleSubmit<CardCommentValues>;
   onSubmit: (data: CardCommentValues) => void;
 }
@@ -36,7 +37,14 @@ export default function CommentForm({
   formProps,
   commentActions,
 }: CommentProps) {
-  const { control, isValid, onFormSubmit, onSubmit, isSubmitting } = formProps;
+  const {
+    control,
+    isValid,
+    onFormSubmit,
+    onSubmit,
+    isCreating,
+    submittingCommentId,
+  } = formProps;
   const { commentList, loading, loadingMore, sentinelRef } = listProps;
   return (
     <div
@@ -79,7 +87,7 @@ export default function CommentForm({
                 <ButtonInputDelete
                   type="submit"
                   variant="secondary"
-                  disabled={!isValid || isSubmitting}
+                  disabled={!isValid || isCreating}
                   className="
                       absolute right-[20px] bottom-[12px] tablet:right-[11px]
                       w-[84px] h-[28px] tablet:w-[77px] tablet:h-[32px]
@@ -106,7 +114,7 @@ export default function CommentForm({
                 key={comment.id}
                 comment={comment}
                 commentActions={commentActions}
-                isSubmitting={isSubmitting}
+                isSubmitting={isCreating || submittingCommentId === comment.id}
               />
             ))}
           </>
